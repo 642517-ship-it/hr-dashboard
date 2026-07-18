@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לוח מחוונים · משאבי אנוש — אורנים טכנולוגיות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#0C2E33; --ink-2:#123A40; --canvas:#EFF3F2; --card:#FFFFFF;
+  --teal:#0E8F8C; --teal-2:#13B3A6; --amber:#E8973A; --coral:#E5674E;
+  --text:#11262A; --muted:#5F7B79; --hair:#E2EBEA; --hair-dark:#1D474D;
+  --sh:0 1px 3px rgba(12,46,51,.06),0 8px 24px rgba(12,46,51,.06);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--canvas);color:var(--text);font-family:'Heebo',system-ui,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;min-height:100vh}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- Sidebar ---------- */
+.side{width:288px;flex:none;background:var(--ink);color:#EAF4F3;padding:26px 22px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--teal),var(--teal-2));display:grid;place-items:center;font-weight:900;color:#fff;font-size:19px}
+.brand h1{font-size:16px;font-weight:800;letter-spacing:-.2px}
+.brand p{font-size:12px;color:#8FB6B3;font-weight:400;margin-top:1px}
+.filter-group h3{font-size:11px;font-weight:700;letter-spacing:.9px;color:#7FA9A6;text-transform:uppercase;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--hair-dark);background:transparent;color:#CBE0DE;font-family:inherit;font-size:12.5px;font-weight:500;padding:6px 12px;border-radius:999px;cursor:pointer;transition:.16s;display:flex;align-items:center;gap:6px}
+.chip:hover{border-color:var(--teal-2);color:#fff}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+.chip .c{opacity:.65;font-size:11px}
+.chip.on .c{opacity:.9}
+.side .reset{margin-top:auto;border:1px solid var(--hair-dark);background:transparent;color:#CBE0DE;font-family:inherit;font-weight:600;font-size:13px;padding:11px;border-radius:12px;cursor:pointer;transition:.16s}
+.side .reset:hover{background:var(--ink-2);color:#fff}
+.side .upload{border:1px dashed #2C5A60;border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:.16s}
+.side .upload:hover{border-color:var(--teal-2);background:var(--ink-2)}
+.side .upload b{display:block;font-size:12.5px;color:#EAF4F3}
+.side .upload span{font-size:11px;color:#7FA9A6}
+.side .upload input{display:none}
+
+/* ---------- Main ---------- */
+.main{flex:1;padding:30px 34px 44px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.title-hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--teal);text-transform:uppercase}
+.title-hero h2{font-size:30px;font-weight:900;letter-spacing:-.7px;margin-top:3px}
+.headline{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:12px 20px;box-shadow:var(--sh);text-align:center}
+.headline .big{font-size:30px;font-weight:900;color:var(--ink);line-height:1}
+.headline .lbl{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:3px}
+
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--hair);border-radius:var(--r);padding:16px 16px 15px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.kpi .k-lbl{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .k-val{font-size:30px;font-weight:900;letter-spacing:-.8px;margin-top:8px;line-height:1;color:var(--text)}
+.kpi .k-sub{font-size:11px;color:var(--muted);margin-top:6px;font-weight:400}
+.kpi .dot{position:absolute;inset-inline-start:16px;top:18px;width:8px;height:8px;border-radius:50%}
+.kpi.accent .k-val{color:var(--amber)}
+
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+.panel{background:var(--card);border:1px solid var(--hair);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh)}
+.panel h4{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:2px}
+.panel .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px;font-weight:400}
+.chart-wrap{position:relative;width:100%}
+.h-tall{height:300px}.h-mid{height:250px}.h-low{height:220px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.row3{display:grid;grid-template-columns:1fr;gap:18px;margin-top:18px}
+
+/* table */
+.tbl-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.search{border:1px solid var(--hair);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;width:230px;background:var(--canvas);color:var(--text)}
+.search:focus{outline:2px solid var(--teal);outline-offset:1px;background:#fff}
+.tbl-scroll{max-height:360px;overflow:auto;border-radius:10px;border:1px solid var(--hair)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{position:sticky;top:0;background:#F6F9F8;text-align:right;font-weight:700;color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--hair);white-space:nowrap;font-size:12px}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--hair);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#F6FAF9}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.badge.act{background:#E3F4EF;color:#0B7A5E}
+.badge.left{background:#F1E9E6;color:#9A5847}
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+.foot{margin-top:26px;font-size:11.5px;color:var(--muted);text-align:center}
+.foot b{color:var(--teal)}
+
+/* mobile */
+.hamb{display:none}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
+@media(max-width:820px){
+  body{flex-direction:column}
+  .side{width:100%;height:auto;position:relative;flex-direction:column}
+  .main{padding:20px 16px 40px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .row2{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand">
+    <div class="logo">א</div>
+    <div><h1>אורנים טכנולוגיות</h1><p>לוח מחוונים · משאבי אנוש</p></div>
+  </div>
+
+  <div class="filter-group"><h3>מחלקה</h3><div class="chips" id="f-dept"></div></div>
+  <div class="filter-group"><h3>סוג העסקה</h3><div class="chips" id="f-type"></div></div>
+  <div class="filter-group"><h3>מגדר</h3><div class="chips" id="f-gender"></div></div>
+  <div class="filter-group"><h3>סטטוס</h3><div class="chips" id="f-status"></div></div>
+
+  <label class="upload">
+    <b>טעינת קובץ Excel</b>
+    <span>לרענון הנתונים מגיליון "נתונים"</span>
+    <input type="file" id="xlsx-in" accept=".xlsx,.xls">
+  </label>
+  <button class="reset" id="reset">איפוס כל הסינון</button>
+</aside>
+
+<main class="main">
+  <div class="top">
+    <div class="title-hero">
+      <div class="eyebrow">סקירת כוח אדם</div>
+      <h2>לוח מחוונים · משאבי אנוש</h2>
+    </div>
+    <div class="headline">
+      <div class="big tnum" id="hl-count">0</div>
+      <div class="lbl" id="hl-lbl">עובדים בתצוגה</div>
+    </div>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <div class="panel">
+      <h4>עובדים לפי מחלקה</h4><div class="sub">מספר עובדים בכל מחלקה</div>
+      <div class="chart-wrap h-tall"><canvas id="c-dept"></canvas></div>
+    </div>
+    <div class="panel">
+      <h4>התפלגות סוג העסקה</h4><div class="sub">חלוקה לפי היקף המשרה</div>
+      <div class="chart-wrap h-tall"><canvas id="c-type"></canvas></div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="panel">
+      <h4>שכר ממוצע לפי מחלקה</h4><div class="sub">בשקלים חדשים (₪)</div>
+      <div class="chart-wrap h-mid"><canvas id="c-salary"></canvas></div>
+    </div>
+    <div class="panel">
+      <h4>גיוסים לאורך השנים</h4><div class="sub">מספר עובדים לפי שנת תחילת עבודה</div>
+      <div class="chart-wrap h-mid"><canvas id="c-year"></canvas></div>
+    </div>
+  </div>
+
+  <div class="row3">
+    <div class="panel">
+      <div class="tbl-head">
+        <div><h4>רשימת עובדים</h4><div class="sub" id="tbl-sub">כל העובדים בתצוגה</div></div>
+        <input class="search" id="search" placeholder="חיפוש לפי שם או מחלקה…">
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>שם</th><th>מחלקה</th><th>סוג העסקה</th><th>מגדר</th>
+            <th>ותק</th><th>שכר (₪)</th><th>היעדרות</th><th>סטטוס</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">נבנה עם <b>אורנים טכנולוגיות</b> · לוח מחוונים אינטראקטיבי · הנתונים לצורך הדגמה</div>
+</main>
+
+<script>
+const DATA_RAW = [{"id": 1001, "name": "יוסי דהן", "dept": "מכירות", "type": "משרה מלאה", "gender": "זכר", "start": "2017-02-23", "startYear": 2017, "absence": 10, "salary": 14900, "tenure": 9.4, "status": "פעיל"}, {"id": 1002, "name": "נועה כהן", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2022-10-01", "startYear": 2022, "absence": 0, "salary": 19300, "tenure": 3.8, "status": "פעיל"}, {"id": 1003, "name": "הדס מלכה", "dept": "שיווק", "type": "משרה חלקית", "gender": "נקבה", "start": "2016-01-27", "startYear": 2016, "absence": 12, "salary": 9100, "tenure": 10.5, "status": "פעיל"}, {"id": 1004, "name": "רותם ביטון", "dept": "פיתוח", "type": "משרה חלקית", "gender": "נקבה", "start": "2017-02-22", "startYear": 2017, "absence": 1, "salary": 10800, "tenure": 9.4, "status": "פעיל"}, {"id": 1005, "name": "מור דהן", "dept": "שירות לקוחות", "type": "משרה חלקית", "gender": "נקבה", "start": "2022-01-05", "startYear": 2022, "absence": 1, "salary": 7100, "tenure": 4.5, "status": "פעיל"}, {"id": 1006, "name": "מור שרון", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-07-06", "startYear": 2016, "absence": 10, "salary": 10400, "tenure": 10, "status": "פעיל"}, {"id": 1007, "name": "ניר פרץ", "dept": "תפעול", "type": "משרה מלאה", "gender": "זכר", "start": "2025-05-09", "startYear": 2025, "absence": 5, "salary": 10100, "tenure": 1.2, "status": "פעיל"}, {"id": 1008, "name": "שירה עמר", "dept": "שיווק", "type": "משרה מלאה", "gender": "נקבה", "start": "2018-09-29", "startYear": 2018, "absence": 2, "salary": 13500, "tenure": 7.8, "status": "פעיל"}, {"id": 1009, "name": "אורי לוי", "dept": "מכירות", "type": "משרה מלאה", "gender": "זכר", "start": "2019-07-16", "startYear": 2019, "absence": 6, "salary": 12400, "tenure": 7, "status": "פעיל"}, {"id": 1010, "name": "ליאת אלבז", "dept": "תפעול", "type": "משרה חלקית", "gender": "נקבה", "start": "2021-02-22", "startYear": 2021, "absence": 2, "salary": 6300, "tenure": 5.4, "status": "פעיל"}, {"id": 1011, "name": "הילה חדד", "dept": "כספים", "type": "משרה מלאה", "gender": "נקבה", "start": "2018-06-17", "startYear": 2018, "absence": 2, "salary": 15800, "tenure": 8.1, "status": "עזב"}, {"id": 1012, "name": "אבי ביטון", "dept": "שיווק", "type": "משרה חלקית", "gender": "זכר", "start": "2020-09-25", "startYear": 2020, "absence": 9, "salary": 6800, "tenure": 5.8, "status": "פעיל"}, {"id": 1013, "name": "גלית דהן", "dept": "כספים", "type": "משרה חלקית", "gender": "נקבה", "start": "2016-02-17", "startYear": 2016, "absence": 10, "salary": 10200, "tenure": 10.4, "status": "פעיל"}, {"id": 1014, "name": "ענת פרץ", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-01-14", "startYear": 2016, "absence": 11, "salary": 15600, "tenure": 10.5, "status": "פעיל"}, {"id": 1015, "name": "עמית פרץ", "dept": "משאבי אנוש", "type": "משרה מלאה", "gender": "זכר", "start": "2023-03-02", "startYear": 2023, "absence": 8, "salary": 13100, "tenure": 3.4, "status": "פעיל"}, {"id": 1016, "name": "ליאור סבן", "dept": "כספים", "type": "משרה מלאה", "gender": "זכר", "start": "2021-06-24", "startYear": 2021, "absence": 0, "salary": 13400, "tenure": 5.1, "status": "פעיל"}, {"id": 1017, "name": "הדס לוי", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-11-18", "startYear": 2016, "absence": 1, "salary": 14900, "tenure": 9.7, "status": "פעיל"}, {"id": 1018, "name": "רון אלבז", "dept": "כספים", "type": "משרה מלאה", "gender": "זכר", "start": "2021-12-01", "startYear": 2021, "absence": 9, "salary": 15300, "tenure": 4.6, "status": "פעיל"}, {"id": 1019, "name": "טל אדרי", "dept": "כספים", "type": "משרה מלאה", "gender": "זכר", "start": "2020-11-29", "startYear": 2020, "absence": 8, "salary": 15500, "tenure": 5.6, "status": "פעיל"}, {"id": 1020, "name": "אורי כהן", "dept": "שיווק", "type": "משרה מלאה", "gender": "זכר", "start": "2018-06-21", "startYear": 2018, "absence": 0, "salary": 11400, "tenure": 8.1, "status": "פעיל"}, {"id": 1021, "name": "משה לוי", "dept": "משאבי אנוש", "type": "משרה מלאה", "gender": "זכר", "start": "2018-09-01", "startYear": 2018, "absence": 4, "salary": 13400, "tenure": 7.9, "status": "פעיל"}, {"id": 1022, "name": "דור ברק", "dept": "תפעול", "type": "משרה חלקית", "gender": "זכר", "start": "2025-01-20", "startYear": 2025, "absence": 6, "salary": 6100, "tenure": 1.5, "status": "עזב"}, {"id": 1023, "name": "סיון חדד", "dept": "תפעול", "type": "משרה חלקית", "gender": "נקבה", "start": "2016-08-09", "startYear": 2016, "absence": 10, "salary": 7300, "tenure": 9.9, "status": "פעיל"}, {"id": 1024, "name": "עידו אוחיון", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2018-02-23", "startYear": 2018, "absence": 3, "salary": 10100, "tenure": 8.4, "status": "פעיל"}, {"id": 1025, "name": "גיל מלכה", "dept": "מכירות", "type": "קבלן", "gender": "זכר", "start": "2020-12-20", "startYear": 2020, "absence": 12, "salary": 17100, "tenure": 5.6, "status": "פעיל"}, {"id": 1026, "name": "ליאור כהן", "dept": "כספים", "type": "קבלן", "gender": "זכר", "start": "2025-07-08", "startYear": 2025, "absence": 3, "salary": 15100, "tenure": 1, "status": "פעיל"}, {"id": 1027, "name": "עידו לוי", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2020-05-18", "startYear": 2020, "absence": 4, "salary": 22000, "tenure": 6.2, "status": "פעיל"}, {"id": 1028, "name": "לינוי נחום", "dept": "שיווק", "type": "משרה מלאה", "gender": "נקבה", "start": "2018-02-16", "startYear": 2018, "absence": 4, "salary": 12200, "tenure": 8.4, "status": "עזב"}, {"id": 1029, "name": "אורי לוי", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2025-07-24", "startYear": 2025, "absence": 8, "salary": 16400, "tenure": 1, "status": "פעיל"}, {"id": 1030, "name": "איתי מזרחי", "dept": "שיווק", "type": "משרה מלאה", "gender": "זכר", "start": "2018-08-21", "startYear": 2018, "absence": 6, "salary": 11700, "tenure": 7.9, "status": "פעיל"}, {"id": 1031, "name": "דור עמר", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2023-05-16", "startYear": 2023, "absence": 9, "salary": 19400, "tenure": 3.2, "status": "פעיל"}, {"id": 1032, "name": "ליאת אוחיון", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2023-07-14", "startYear": 2023, "absence": 10, "salary": 12600, "tenure": 3, "status": "פעיל"}, {"id": 1033, "name": "יוסי מלכה", "dept": "שיווק", "type": "משרה מלאה", "gender": "זכר", "start": "2017-02-13", "startYear": 2017, "absence": 1, "salary": 13800, "tenure": 9.4, "status": "פעיל"}, {"id": 1034, "name": "יונתן מזרחי", "dept": "משאבי אנוש", "type": "משרה מלאה", "gender": "זכר", "start": "2017-10-08", "startYear": 2017, "absence": 7, "salary": 14200, "tenure": 8.8, "status": "פעיל"}, {"id": 1035, "name": "ליאור גבאי", "dept": "כספים", "type": "משרה מלאה", "gender": "זכר", "start": "2017-07-04", "startYear": 2017, "absence": 4, "salary": 13400, "tenure": 9, "status": "עזב"}, {"id": 1036, "name": "גיל גבאי", "dept": "שיווק", "type": "משרה מלאה", "gender": "זכר", "start": "2018-04-13", "startYear": 2018, "absence": 10, "salary": 14300, "tenure": 8.3, "status": "פעיל"}, {"id": 1037, "name": "רותם לוי", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2019-02-07", "startYear": 2019, "absence": 0, "salary": 15300, "tenure": 7.4, "status": "פעיל"}, {"id": 1038, "name": "דנה מלכה", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-02-09", "startYear": 2016, "absence": 1, "salary": 9700, "tenure": 10.4, "status": "פעיל"}, {"id": 1039, "name": "ליאור לוי", "dept": "משאבי אנוש", "type": "משרה מלאה", "gender": "זכר", "start": "2017-08-29", "startYear": 2017, "absence": 6, "salary": 10800, "tenure": 8.9, "status": "פעיל"}, {"id": 1040, "name": "יונתן פרידמן", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2019-12-19", "startYear": 2019, "absence": 12, "salary": 10200, "tenure": 6.6, "status": "פעיל"}, {"id": 1041, "name": "ניר אברהם", "dept": "כספים", "type": "משרה חלקית", "gender": "זכר", "start": "2020-08-15", "startYear": 2020, "absence": 0, "salary": 8300, "tenure": 5.9, "status": "פעיל"}, {"id": 1042, "name": "הדס דהן", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2020-04-15", "startYear": 2020, "absence": 0, "salary": 21500, "tenure": 6.3, "status": "פעיל"}, {"id": 1043, "name": "סיון גבאי", "dept": "משאבי אנוש", "type": "משרה חלקית", "gender": "נקבה", "start": "2018-07-02", "startYear": 2018, "absence": 0, "salary": 8000, "tenure": 8, "status": "פעיל"}, {"id": 1044, "name": "שירה דהן", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2023-08-15", "startYear": 2023, "absence": 8, "salary": 12800, "tenure": 2.9, "status": "עזב"}, {"id": 1045, "name": "דנה ברק", "dept": "כספים", "type": "משרה מלאה", "gender": "נקבה", "start": "2017-03-20", "startYear": 2017, "absence": 9, "salary": 15400, "tenure": 9.3, "status": "פעיל"}, {"id": 1046, "name": "לינוי עמר", "dept": "כספים", "type": "משרה מלאה", "gender": "נקבה", "start": "2022-06-19", "startYear": 2022, "absence": 3, "salary": 14300, "tenure": 4.1, "status": "פעיל"}, {"id": 1047, "name": "עמית נחום", "dept": "שירות לקוחות", "type": "קבלן", "gender": "זכר", "start": "2024-04-06", "startYear": 2024, "absence": 10, "salary": 9700, "tenure": 2.3, "status": "פעיל"}, {"id": 1048, "name": "מור אוחיון", "dept": "שיווק", "type": "משרה מלאה", "gender": "נקבה", "start": "2019-05-15", "startYear": 2019, "absence": 8, "salary": 12700, "tenure": 7.2, "status": "פעיל"}, {"id": 1049, "name": "מאיה נחום", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2020-04-01", "startYear": 2020, "absence": 10, "salary": 20700, "tenure": 6.3, "status": "פעיל"}, {"id": 1050, "name": "אפרת נחום", "dept": "משאבי אנוש", "type": "משרה מלאה", "gender": "נקבה", "start": "2018-05-10", "startYear": 2018, "absence": 6, "salary": 14000, "tenure": 8.2, "status": "פעיל"}, {"id": 1051, "name": "אביגיל מלכה", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2021-04-22", "startYear": 2021, "absence": 12, "salary": 13300, "tenure": 5.2, "status": "פעיל"}, {"id": 1052, "name": "משה גבאי", "dept": "תפעול", "type": "משרה מלאה", "gender": "זכר", "start": "2019-10-04", "startYear": 2019, "absence": 1, "salary": 13000, "tenure": 6.8, "status": "פעיל"}, {"id": 1053, "name": "הדס פרידמן", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2021-04-30", "startYear": 2021, "absence": 9, "salary": 21400, "tenure": 5.2, "status": "עזב"}, {"id": 1054, "name": "הילה פרידמן", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "נקבה", "start": "2020-06-24", "startYear": 2020, "absence": 3, "salary": 8600, "tenure": 6.1, "status": "פעיל"}, {"id": 1055, "name": "נדב אזולאי", "dept": "פיתוח", "type": "קבלן", "gender": "זכר", "start": "2021-10-22", "startYear": 2021, "absence": 7, "salary": 17200, "tenure": 4.7, "status": "פעיל"}, {"id": 1056, "name": "אלון ביטון", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2022-04-08", "startYear": 2022, "absence": 9, "salary": 9300, "tenure": 4.3, "status": "פעיל"}, {"id": 1057, "name": "מור סבן", "dept": "תפעול", "type": "משרה חלקית", "gender": "נקבה", "start": "2020-12-31", "startYear": 2020, "absence": 2, "salary": 7600, "tenure": 5.6, "status": "פעיל"}, {"id": 1058, "name": "הדס דהן", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "נקבה", "start": "2023-01-11", "startYear": 2023, "absence": 3, "salary": 9100, "tenure": 3.5, "status": "עזב"}, {"id": 1059, "name": "הדס דהן", "dept": "מכירות", "type": "משרה חלקית", "gender": "נקבה", "start": "2016-11-26", "startYear": 2016, "absence": 2, "salary": 7100, "tenure": 9.6, "status": "פעיל"}, {"id": 1060, "name": "עומר מזרחי", "dept": "תפעול", "type": "משרה מלאה", "gender": "זכר", "start": "2021-03-23", "startYear": 2021, "absence": 6, "salary": 9600, "tenure": 5.3, "status": "פעיל"}, {"id": 1061, "name": "הילה כהן", "dept": "משאבי אנוש", "type": "משרה חלקית", "gender": "נקבה", "start": "2020-04-07", "startYear": 2020, "absence": 7, "salary": 6100, "tenure": 6.3, "status": "פעיל"}, {"id": 1062, "name": "לינוי נחום", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "נקבה", "start": "2022-10-06", "startYear": 2022, "absence": 3, "salary": 9900, "tenure": 3.8, "status": "פעיל"}, {"id": 1063, "name": "מיכל אדרי", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2020-07-14", "startYear": 2020, "absence": 11, "salary": 11900, "tenure": 6, "status": "פעיל"}, {"id": 1064, "name": "איל נחום", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2022-04-30", "startYear": 2022, "absence": 10, "salary": 15500, "tenure": 4.2, "status": "פעיל"}, {"id": 1065, "name": "אלון אברהם", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2018-05-16", "startYear": 2018, "absence": 7, "salary": 17700, "tenure": 8.2, "status": "פעיל"}, {"id": 1066, "name": "רותם חדד", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-03-20", "startYear": 2016, "absence": 11, "salary": 13900, "tenure": 10.3, "status": "פעיל"}, {"id": 1067, "name": "הדס מזרחי", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "נקבה", "start": "2024-06-16", "startYear": 2024, "absence": 0, "salary": 11700, "tenure": 2.1, "status": "פעיל"}, {"id": 1068, "name": "איל ביטון", "dept": "מכירות", "type": "משרה מלאה", "gender": "זכר", "start": "2017-04-13", "startYear": 2017, "absence": 9, "salary": 16000, "tenure": 9.3, "status": "פעיל"}, {"id": 1069, "name": "סיון אברהם", "dept": "שיווק", "type": "קבלן", "gender": "נקבה", "start": "2024-01-21", "startYear": 2024, "absence": 1, "salary": 16600, "tenure": 2.5, "status": "פעיל"}, {"id": 1070, "name": "יעל ברק", "dept": "פיתוח", "type": "משרה מלאה", "gender": "נקבה", "start": "2023-08-06", "startYear": 2023, "absence": 6, "salary": 18200, "tenure": 3, "status": "פעיל"}, {"id": 1071, "name": "דור אזולאי", "dept": "פיתוח", "type": "משרה חלקית", "gender": "זכר", "start": "2025-07-14", "startYear": 2025, "absence": 10, "salary": 11800, "tenure": 1, "status": "פעיל"}, {"id": 1072, "name": "יונתן נחום", "dept": "תפעול", "type": "משרה מלאה", "gender": "זכר", "start": "2021-09-03", "startYear": 2021, "absence": 10, "salary": 10900, "tenure": 4.9, "status": "פעיל"}, {"id": 1073, "name": "יעל חדד", "dept": "כספים", "type": "משרה מלאה", "gender": "נקבה", "start": "2025-04-17", "startYear": 2025, "absence": 7, "salary": 17000, "tenure": 1.3, "status": "פעיל"}, {"id": 1074, "name": "מור נחום", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "נקבה", "start": "2025-04-05", "startYear": 2025, "absence": 11, "salary": 10300, "tenure": 1.3, "status": "פעיל"}, {"id": 1075, "name": "משה דהן", "dept": "כספים", "type": "משרה מלאה", "gender": "זכר", "start": "2021-03-18", "startYear": 2021, "absence": 9, "salary": 16400, "tenure": 5.3, "status": "פעיל"}, {"id": 1076, "name": "שי אוחיון", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2024-12-11", "startYear": 2024, "absence": 4, "salary": 17800, "tenure": 1.6, "status": "פעיל"}, {"id": 1077, "name": "שני כהן", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2018-09-15", "startYear": 2018, "absence": 11, "salary": 11100, "tenure": 7.8, "status": "פעיל"}, {"id": 1078, "name": "שי אלבז", "dept": "תפעול", "type": "משרה מלאה", "gender": "זכר", "start": "2019-04-20", "startYear": 2019, "absence": 3, "salary": 11100, "tenure": 7.2, "status": "פעיל"}, {"id": 1079, "name": "קרן נחום", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2024-05-13", "startYear": 2024, "absence": 8, "salary": 10800, "tenure": 2.2, "status": "פעיל"}, {"id": 1080, "name": "מאיה דהן", "dept": "מכירות", "type": "משרה חלקית", "gender": "נקבה", "start": "2019-07-16", "startYear": 2019, "absence": 1, "salary": 8900, "tenure": 7, "status": "פעיל"}, {"id": 1081, "name": "עומר פרידמן", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2022-08-11", "startYear": 2022, "absence": 12, "salary": 10100, "tenure": 3.9, "status": "פעיל"}, {"id": 1082, "name": "עומר גבאי", "dept": "מכירות", "type": "משרה מלאה", "gender": "זכר", "start": "2016-02-27", "startYear": 2016, "absence": 11, "salary": 13800, "tenure": 10.4, "status": "פעיל"}, {"id": 1083, "name": "ליאור גבאי", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2024-06-10", "startYear": 2024, "absence": 7, "salary": 8500, "tenure": 2.1, "status": "עזב"}, {"id": 1084, "name": "קרן אלבז", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2016-07-29", "startYear": 2016, "absence": 4, "salary": 13500, "tenure": 10, "status": "פעיל"}, {"id": 1085, "name": "עידו אלבז", "dept": "פיתוח", "type": "משרה מלאה", "gender": "זכר", "start": "2016-08-07", "startYear": 2016, "absence": 2, "salary": 16400, "tenure": 9.9, "status": "פעיל"}, {"id": 1086, "name": "שירה אזולאי", "dept": "פיתוח", "type": "משרה חלקית", "gender": "נקבה", "start": "2022-10-19", "startYear": 2022, "absence": 9, "salary": 12600, "tenure": 3.7, "status": "פעיל"}, {"id": 1087, "name": "אביגיל מלכה", "dept": "מכירות", "type": "משרה מלאה", "gender": "נקבה", "start": "2020-10-22", "startYear": 2020, "absence": 4, "salary": 14000, "tenure": 5.7, "status": "עזב"}, {"id": 1088, "name": "עומר פרידמן", "dept": "מכירות", "type": "משרה מלאה", "gender": "זכר", "start": "2018-09-09", "startYear": 2018, "absence": 2, "salary": 13900, "tenure": 7.9, "status": "פעיל"}, {"id": 1089, "name": "אביגיל עמר", "dept": "תפעול", "type": "משרה מלאה", "gender": "נקבה", "start": "2019-03-26", "startYear": 2019, "absence": 11, "salary": 10600, "tenure": 7.3, "status": "פעיל"}, {"id": 1090, "name": "ניר דהן", "dept": "שירות לקוחות", "type": "משרה מלאה", "gender": "זכר", "start": "2023-06-01", "startYear": 2023, "absence": 12, "salary": 11600, "tenure": 3.1, "status": "פעיל"}];
+let DATA = DATA_RAW.slice();
+
+const DEPT_COLORS = ['#0E8F8C','#13B3A6','#4FC3B4','#2A6F73','#8ABF9E','#E8973A','#E5674E','#7C9CB8'];
+const fmt = n => n.toLocaleString('he-IL');
+const money = n => '₪'+Math.round(n).toLocaleString('he-IL');
+const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+const state = { dept:'all', type:'all', gender:'all', status:'all', q:'' };
+
+function distinct(key){ return [...new Set(DATA_RAW.map(d=>d[key]))]; }
+
+/* ---- build filter chips ---- */
+function chip(val,label,cnt){
+  return `<button class="chip" data-v="${val}">${label}<span class="c tnum">${cnt}</span></button>`;
+}
+function buildFilters(){
+  const defs = [
+    ['dept','f-dept'],['type','f-type'],['gender','f-gender'],['status','f-status']
+  ];
+  defs.forEach(([key,id])=>{
+    const el = document.getElementById(id);
+    const vals = distinct(key);
+    let html = `<button class="chip on" data-v="all">הכול<span class="c tnum">${DATA_RAW.length}</span></button>`;
+    vals.forEach(v=>{
+      const c = DATA_RAW.filter(d=>d[key]===v).length;
+      html += chip(v,v,c);
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('.chip').forEach(b=>{
+      b.addEventListener('click',()=>{
+        state[key] = b.dataset.v;
+        el.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        render();
+      });
+    });
+  });
+}
+
+function filtered(){
+  return DATA.filter(d=>
+    (state.dept==='all'   || d.dept===state.dept) &&
+    (state.type==='all'   || d.type===state.type) &&
+    (state.gender==='all' || d.gender===state.gender) &&
+    (state.status==='all' || d.status===state.status)
+  );
+}
+
+/* ---- animated counter ---- */
+function animate(el,to,{money:m=false,dec=0,suffix=''}={}){
+  const from = parseFloat(el.dataset.v||'0'); el.dataset.v=to;
+  const show=v=> m?money(v):((dec?v.toFixed(dec):fmt(Math.round(v)))+suffix);
+  if(reduce){ el.textContent = show(to); return; }
+  const t0=performance.now(), dur=520;
+  function tick(t){
+    const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3), v=from+(to-from)*e;
+    el.textContent = show(v);
+    if(k<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---- KPIs ---- */
+const KPI_DEFS = [
+  {id:'total', lbl:'סה"כ עובדים', dot:'#0E8F8C'},
+  {id:'active',lbl:'עובדים פעילים', dot:'#13B3A6'},
+  {id:'turn',  lbl:'אחוז עזיבה', dot:'#E8973A', accent:true},
+  {id:'tenure',lbl:'ממוצע ותק', dot:'#4FC3B4'},
+  {id:'absence',lbl:'ממוצע היעדרות', dot:'#2A6F73'},
+  {id:'salary',lbl:'שכר ממוצע', dot:'#8ABF9E'},
+];
+function buildKpiShells(){
+  document.getElementById('kpis').innerHTML = KPI_DEFS.map(k=>`
+    <div class="kpi ${k.accent?'accent':''}">
+      <span class="dot" style="background:${k.dot}"></span>
+      <div class="k-lbl">${k.lbl}</div>
+      <div class="k-val tnum" id="kv-${k.id}" data-v="0">0</div>
+      <div class="k-sub" id="ks-${k.id}"></div>
+    </div>`).join('');
+}
+function updateKpis(rows){
+  const n=rows.length;
+  const active=rows.filter(r=>r.status==='פעיל').length;
+  const left=n-active;
+  const turn=n?left/n*100:0;
+  const avg=(k)=> n? rows.reduce((s,r)=>s+r[k],0)/n : 0;
+  animate(document.getElementById('kv-total'),n);
+  animate(document.getElementById('kv-active'),active);
+  animate(document.getElementById('kv-turn'),turn,{dec:1,suffix:'%'});
+  animate(document.getElementById('kv-tenure'),avg('tenure'),{dec:1});
+  animate(document.getElementById('kv-absence'),avg('absence'),{dec:1});
+  animate(document.getElementById('kv-salary'),avg('salary'),{money:true});
+  document.getElementById('ks-total').textContent = `מתוך ${DATA.length} במאגר`;
+  document.getElementById('ks-active').textContent = `${left} עזבו`;
+  document.getElementById('ks-turn').textContent = 'מתוך התצוגה';
+  document.getElementById('ks-tenure').textContent = 'שנים';
+  document.getElementById('ks-absence').textContent = 'ימים ברבעון';
+  document.getElementById('ks-salary').textContent = 'לחודש';
+}
+
+/* ---- charts ---- */
+let charts={};
+Chart.defaults.font.family="'Heebo',sans-serif";
+Chart.defaults.font.size=12;
+Chart.defaults.color='#5F7B79';
+const gridClr='#EEF4F3';
+
+function groupCount(rows,key,order){
+  const m={}; rows.forEach(r=>m[r[key]]=(m[r[key]]||0)+1);
+  const labels = order||Object.keys(m);
+  return {labels, values: labels.map(l=>m[l]||0)};
+}
+function groupAvg(rows,key,val,order){
+  const s={},c={}; rows.forEach(r=>{s[r[key]]=(s[r[key]]||0)+r[val];c[r[key]]=(c[r[key]]||0)+1;});
+  const labels=order||Object.keys(s);
+  return {labels, values: labels.map(l=> c[l]? Math.round(s[l]/c[l]):0)};
+}
+
+const DEPT_ORDER = distinctSafe('dept');
+const TYPE_ORDER = distinctSafe('type');
+function distinctSafe(k){ return [...new Set(DATA_RAW.map(d=>d[k]))]; }
+
+function makeCharts(){
+  charts.dept = new Chart(document.getElementById('c-dept'),{
+    type:'bar',
+    data:{labels:[],datasets:[{data:[],backgroundColor:'#0E8F8C',borderRadius:6,maxBarThickness:26}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:600},
+      plugins:{legend:{display:false},tooltip:{padding:10}},
+      scales:{x:{beginAtZero:true,grid:{color:gridClr},ticks:{precision:0}},y:{grid:{display:false}}}}
+  });
+  charts.type = new Chart(document.getElementById('c-type'),{
+    type:'doughnut',
+    data:{labels:[],datasets:[{data:[],backgroundColor:['#0E8F8C','#E8973A','#8AA6A4'],borderColor:'#fff',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',animation:{duration:reduce?0:600},
+      plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle'}}}}
+  });
+  charts.salary = new Chart(document.getElementById('c-salary'),{
+    type:'bar',
+    data:{labels:[],datasets:[{data:[],backgroundColor:'#13B3A6',borderRadius:6,maxBarThickness:34}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:600},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.parsed.y)}}},
+      scales:{y:{beginAtZero:true,grid:{color:gridClr},ticks:{callback:v=>'₪'+(v/1000)+'k'}},x:{grid:{display:false}}}}
+  });
+  charts.year = new Chart(document.getElementById('c-year'),{
+    type:'line',
+    data:{labels:[],datasets:[{data:[],borderColor:'#0E8F8C',backgroundColor:'rgba(14,143,140,.12)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#0E8F8C',borderWidth:2.5}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:600},
+      plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:gridClr},ticks:{precision:0}},x:{grid:{display:false}}}}
+  });
+}
+function updateCharts(rows){
+  const d=groupCount(rows,'dept',DEPT_ORDER);
+  charts.dept.data.labels=d.labels; charts.dept.data.datasets[0].data=d.values;
+  charts.dept.data.datasets[0].backgroundColor=d.labels.map((_,i)=>DEPT_COLORS[i%DEPT_COLORS.length]);
+  charts.dept.update();
+  const t=groupCount(rows,'type',TYPE_ORDER);
+  charts.type.data.labels=t.labels; charts.type.data.datasets[0].data=t.values; charts.type.update();
+  const s=groupAvg(rows,'dept','salary',DEPT_ORDER);
+  charts.salary.data.labels=s.labels; charts.salary.data.datasets[0].data=s.values; charts.salary.update();
+  const years=[...new Set(DATA_RAW.map(r=>r.startYear))].sort();
+  const ym={}; rows.forEach(r=>ym[r.startYear]=(ym[r.startYear]||0)+1);
+  charts.year.data.labels=years; charts.year.data.datasets[0].data=years.map(y=>ym[y]||0); charts.year.update();
+}
+
+/* ---- table ---- */
+function updateTable(rows){
+  const q=state.q.trim();
+  let list=rows;
+  if(q) list=rows.filter(r=>r.name.includes(q)||r.dept.includes(q));
+  const tb=document.getElementById('tbody');
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="8" class="empty">אין עובדים התואמים את הסינון</td></tr>`; }
+  else{
+    tb.innerHTML=list.map(r=>`<tr>
+      <td>${r.name}</td><td>${r.dept}</td><td>${r.type}</td><td>${r.gender}</td>
+      <td class="tnum">${r.tenure}</td><td class="tnum">${fmt(r.salary)}</td><td class="tnum">${r.absence}</td>
+      <td><span class="badge ${r.status==='פעיל'?'act':'left'}">${r.status}</span></td>
+    </tr>`).join('');
+  }
+  document.getElementById('tbl-sub').textContent = `${list.length} עובדים בתצוגה`;
+}
+
+/* ---- render ---- */
+function render(){
+  const rows=filtered();
+  const hc=document.getElementById('hl-count'); animate(hc,rows.length);
+  updateKpis(rows); updateCharts(rows); updateTable(rows);
+}
+
+/* ---- upload ---- */
+document.getElementById('xlsx-in').addEventListener('change',ev=>{
+  const file=ev.target.files[0]; if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets['נתונים']||wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:null});
+      const mapped=raw.map(r=>{
+        const sd=r['תאריך תחילת עבודה'];
+        const dt=sd instanceof Date?sd:(sd?new Date(sd):null);
+        return {id:r['מזהה'],name:r['שם מלא'],dept:r['מחלקה'],type:r['סוג העסקה'],
+          gender:r['מגדר'],start:dt?dt.toISOString().slice(0,10):null,
+          startYear:dt?dt.getFullYear():null,absence:+r['ימי היעדרות (רבעון)']||0,
+          salary:+r['שכר (₪)']||0,tenure:+r['ותק (שנים)']||0,status:r['סטטוס']};
+      }).filter(r=>r.name&&r.dept);
+      if(!mapped.length){alert('לא נמצאו נתונים מתאימים בגיליון "נתונים".');return;}
+      DATA=mapped;
+      Object.assign(state,{dept:'all',type:'all',gender:'all',status:'all',q:''});
+      document.getElementById('search').value='';
+      buildFilters(); render();
+    }catch(err){ alert('שגיאה בקריאת הקובץ. ודאו שזהו קובץ Excel עם גיליון "נתונים".'); }
+  };
+  rd.readAsArrayBuffer(file);
+});
+
+document.getElementById('search').addEventListener('input',e=>{ state.q=e.target.value; updateTable(filtered()); });
+document.getElementById('reset').addEventListener('click',()=>{
+  Object.assign(state,{dept:'all',type:'all',gender:'all',status:'all',q:''});
+  document.getElementById('search').value='';
+  document.querySelectorAll('.chips').forEach(g=>{g.querySelectorAll('.chip').forEach((x,i)=>x.classList.toggle('on',i===0));});
+  render();
+});
+
+/* ---- init ---- */
+buildFilters(); buildKpiShells(); makeCharts(); render();
+</script>
+</body>
+</html>
